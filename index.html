@@ -75,8 +75,25 @@ body[data-v=load] #load{display:flex}
 .textLayer br{display:none}
 .textLayer span::selection{background:rgba(10,132,255,.4);color:transparent}
 .textLayer span.hit{background:rgba(255,214,10,.45);border-radius:3px}
-#sel{position:fixed;top:calc(env(safe-area-inset-top,0px) + 70px);left:50%;transform:translateX(-50%);z-index:45}
-#sel button{width:auto!important;padding:0 18px;border-radius:22px!important;font-size:14px;font-weight:600}
+.hl{position:absolute;inset:0;pointer-events:none}
+.h{position:absolute;display:block}
+.h.fill{background:var(--c);opacity:.4;border-radius:2px}
+.h.under{box-shadow:inset 0 -3px 0 var(--c)}
+.h.strike{background:linear-gradient(var(--c),var(--c)) center/100% 3px no-repeat}
+.h.box{border:2px solid var(--c);border-radius:4px}
+#sel,#hed{position:fixed;top:calc(env(safe-area-inset-top,0px) + 70px);left:50%;transform:translateX(-50%);z-index:45;border-radius:26px;padding:8px 10px;display:flex;gap:8px;max-width:calc(100vw - 20px);box-shadow:0 12px 40px rgba(0,0,0,.55)}
+#sel{flex-direction:column}
+.cr,#hed{flex-wrap:wrap;justify-content:center;align-items:center}
+.cr{display:flex;gap:9px}
+.ar2{display:flex;gap:6px;justify-content:center}
+.ar2 button,#hed [data-a]{padding:0 14px;height:36px;border-radius:18px;font-size:14px;font-weight:600;background:var(--fill)}
+.dot{width:30px;height:30px;border-radius:50%;background:var(--c);border:2px solid rgba(255,255,255,.75);flex:none;position:relative;overflow:hidden}
+.dot.cur{box-shadow:0 0 0 2px #000,0 0 0 4px var(--blue)}
+.dot.sm{display:inline-block;width:11px;height:11px;border:0;vertical-align:middle}
+.dot.add,.swt.add{background:conic-gradient(#ff453a,#ffd60a,#30d158,#64d2ff,#bf5af2,#ff453a);display:inline-block;position:relative;overflow:hidden}
+.dot.add input,.swt.add input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.cw{position:relative;display:inline-block}
+.rm{position:absolute;top:-4px;inset-inline-end:-4px;width:18px;height:18px;border-radius:50%;background:#ff453a;font-size:12px;line-height:1;color:#fff}
 html[dir=ltr] .sw[aria-checked=true]::after{transform:translateX(20px)}
 html[dir=ltr] #back svg{transform:scaleX(-1)}
 body.t2 .pg canvas{filter:sepia(.5) brightness(.93) contrast(.95)}
@@ -170,7 +187,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
     <p class="sub">أضف أول ملف PDF، وسأتذكّر مكان توقفك في كل مرة.</p>
     <button class="cta" id="add2">إضافة ملف PDF</button>
     <div class="feat glass">
-      <div><i class="ib" style="background:#ff453a" data-i="doc"></i><span>تحديد النص ونسخه<small>حدّد أي كلام وانسخه بضغطة</small></span></div>
+      <div><i class="ib" style="background:#ff453a" data-i="doc"></i><span>تظليل النص ونسخه<small>بألوان وأشكال تختارها بنفسك</small></span></div>
       <div><i class="ib" style="background:#0a84ff" data-i="search"></i><span>بحث داخل الملف<small>نتائج فورية مع رقم الصفحة</small></span></div>
       <div><i class="ib" style="background:#bf5af2" data-i="theme"></i><span>خلفية داكنة دقيقة<small>تحافظ على الصور بألوانها الأصلية</small></span></div>
       <div><i class="ib" style="background:#ff9f0a" data-i="flame"></i><span>سلسلة القراءة اليومية<small>تابع تقدمك كل يوم</small></span></div>
@@ -197,10 +214,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
 <div id="scrim"></div>
 <section id="sheet" class="glass">
   <div class="grab"></div>
-  <div class="seg"><button data-t="search">بحث</button><button data-t="toc">الفهرس</button><button data-t="marks">العلامات</button><button data-t="goto">انتقال</button></div>
+  <div class="seg"><button data-t="search">بحث</button><button data-t="toc">الفهرس</button><button data-t="marks">العلامات</button><button data-t="hl">التظليل</button><button data-t="goto">انتقال</button></div>
   <div id="sbody"></div>
 </section>
-<div id="sel" class="pill glass" hidden onpointerdown="event.preventDefault()"><button id="cp">نسخ</button><button id="ss">بحث عنه</button></div>
+<div id="sel" class="glass" hidden onpointerdown="if(!event.target.closest('input'))event.preventDefault()"><div class="cr" id="cr"></div><div class="ar2"><button id="cp">نسخ</button><button id="stl"></button><button id="gg">قوقل</button><button id="dc">المعجم</button></div></div>
+<div id="hed" class="glass" hidden onpointerdown="event.preventDefault()"></div>
 <div id="toast" class="glass"></div>
 <div id="drop">أفلت الملف لإضافته</div>
 <input type="file" id="file" accept="application/pdf,.pdf" hidden>
@@ -228,11 +246,11 @@ setInterval(()=>{if(document.body.dataset.v==='reader'&&!document.hidden){const 
 
 /* state */
 let lib=[],doc=null,meta=null,N=0,base=[],wraps=[],zoom=1,cur=0,G=0,io=null,texts=[],indexed=false,tocCache=null,tab='toc',tt,st,raf;
-const CFG={pos:'b',theme:0,tap:false,wake:false,zoom:1,goal:15,acc:'#0a84ff',lang:'ar',oled:0,img:true};
+const CFG={pos:'b',theme:0,tap:false,wake:false,zoom:1,goal:15,acc:'#0a84ff',lang:'ar',oled:0,img:true,hc:'#ffd60a',hs:'fill',colors:[]};
 let cfg={...CFG,...(ls.get('cfg')||{})};
 /* i18n */
-const EN={'قارئ PDF':'PDF Reader','مكتبتي':'My Library','كل الملفات':'All files','ابدأ مكتبتك':'Start your library','أضف أول ملف PDF، وسأتذكّر مكان توقفك في كل مرة.':'Add your first PDF and I will remember where you stopped.','إضافة ملف PDF':'Add PDF file','إضافة ملف':'Add file','تحديد النص ونسخه':'Select & copy text','حدّد أي كلام وانسخه بضغطة':'Select any text and copy it in one tap','بحث داخل الملف':'Search inside the file','نتائج فورية مع رقم الصفحة':'Instant results with page numbers','خلفية داكنة دقيقة':'Precise dark background','تحافظ على الصور بألوانها الأصلية':'Keeps images in their original colors','سلسلة القراءة اليومية':'Daily reading streak','تابع تقدمك كل يوم':'Track your progress every day','جارٍ فتح الملف…':'Opening file…','أفلت الملف لإضافته':'Drop the file to add it','بحث عنه':'Search it','ابحث في الملف…':'Search in file…','تغيير المظهر':'Change theme','إظهار الأزرار':'Show controls','رقم الصفحة':'Page number','صباح الخير':'Good morning','مساء الخير':'Good evening','أيام':'days','سلسلة القراءة':'Reading streak','قراءة اليوم':'Read today','أكمل القراءة':'Continue reading','صفحات':'pages','صفحة':'Page','حذف؟':'Delete?','تعذّر تحميل مكتبة القراءة':'Could not load the reader library','اختر ملف PDF صالحًا':'Choose a valid PDF file','تعذّر الحفظ في المكتبة':'Could not save to the library','تعذّر فتح الملف':'Could not open the file','الملف محمي بكلمة مرور':'This file is password protected','تعذّر النسخ':'Copy failed','تم النسخ':'Copied','تمت إضافة علامة':'Bookmark added','أُزيلت العلامة':'Bookmark removed','المظهر:':'Theme:','تم حذف المكتبة':'Library deleted','جارٍ تحميل الفهرس…':'Loading contents…','لا يحتوي هذا الملف على فهرس.':'This file has no contents list.','يمكنك استخدام البحث أو الانتقال.':'Try Search or Go to instead.','لا توجد علامات بعد.':'No bookmarks yet.','اضغط أيقونة العلامة أعلى الشاشة لحفظ الصفحة.':'Tap the bookmark icon at the top to save a page.','جارٍ فهرسة الملف…':'Indexing file…','لا توجد نتائج.':'No results.','شريط الأدوات':'Toolbar','موضع الشريط':'Toolbar position','إخفاء الأزرار بالضغط':'Hide controls on tap','اضغط على الصفحة لإخفاء الأدوات وإظهارها':'Tap the page to hide or show the tools','مظهر الصفحات':'Page theme','التكبير الافتراضي':'Default zoom','إبقاء الشاشة مضاءة':'Keep screen on','لا تنطفئ الشاشة أثناء القراءة':'Screen stays on while reading','الهدف اليومي':'Daily goal','دقائق القراءة في اليوم':'Minutes per day','لون التمييز':'Accent color','حذف كل الملفات من المكتبة':'Delete all files from library','اضغط مرة أخرى للتأكيد':'Tap again to confirm','الخلفية الداكنة':'Dark background','درجة الظلام':'Darkness','رمادي داكن':'Dark gray','أسود حقيقي':'True black','الحفاظ على ألوان الصور':'Keep image colors','تبقى الصور بألوانها الأصلية':'Photos stay in their original colors'};
-const EX={'تم':'Done','نسخ':'Copy','بحث':'Search','علامة':'Bookmark','حذف':'Delete','لون':'Color','أسفل':'Bottom','أعلى':'Top','اليمين':'Right','اليسار':'Left','أصلي':'Original','ليلي':'Dark','ورقي':'Paper','انتقال':'Go to','الفهرس':'Contents','العلامات':'Bookmarks','القراءة':'Reading','البيانات':'Data','اللغة':'Language','تكبير':'Zoom in','تصغير':'Zoom out','المكتبة':'Library','الإعدادات':'Settings'};
+const EN={'قارئ PDF':'PDF Reader','مكتبتي':'My Library','كل الملفات':'All files','ابدأ مكتبتك':'Start your library','أضف أول ملف PDF، وسأتذكّر مكان توقفك في كل مرة.':'Add your first PDF and I will remember where you stopped.','إضافة ملف PDF':'Add PDF file','إضافة ملف':'Add file','تحديد النص ونسخه':'Select & copy text','حدّد أي كلام وانسخه بضغطة':'Select any text and copy it in one tap','بحث داخل الملف':'Search inside the file','نتائج فورية مع رقم الصفحة':'Instant results with page numbers','خلفية داكنة دقيقة':'Precise dark background','تحافظ على الصور بألوانها الأصلية':'Keeps images in their original colors','سلسلة القراءة اليومية':'Daily reading streak','تابع تقدمك كل يوم':'Track your progress every day','جارٍ فتح الملف…':'Opening file…','أفلت الملف لإضافته':'Drop the file to add it','بحث عنه':'Search it','ابحث في الملف…':'Search in file…','تغيير المظهر':'Change theme','إظهار الأزرار':'Show controls','رقم الصفحة':'Page number','صباح الخير':'Good morning','مساء الخير':'Good evening','أيام':'days','سلسلة القراءة':'Reading streak','قراءة اليوم':'Read today','أكمل القراءة':'Continue reading','صفحات':'pages','صفحة':'Page','حذف؟':'Delete?','تعذّر تحميل مكتبة القراءة':'Could not load the reader library','اختر ملف PDF صالحًا':'Choose a valid PDF file','تعذّر الحفظ في المكتبة':'Could not save to the library','تعذّر فتح الملف':'Could not open the file','الملف محمي بكلمة مرور':'This file is password protected','تعذّر النسخ':'Copy failed','تم النسخ':'Copied','تمت إضافة علامة':'Bookmark added','أُزيلت العلامة':'Bookmark removed','المظهر:':'Theme:','تم حذف المكتبة':'Library deleted','جارٍ تحميل الفهرس…':'Loading contents…','لا يحتوي هذا الملف على فهرس.':'This file has no contents list.','يمكنك استخدام البحث أو الانتقال.':'Try Search or Go to instead.','لا توجد علامات بعد.':'No bookmarks yet.','اضغط أيقونة العلامة أعلى الشاشة لحفظ الصفحة.':'Tap the bookmark icon at the top to save a page.','جارٍ فهرسة الملف…':'Indexing file…','لا توجد نتائج.':'No results.','شريط الأدوات':'Toolbar','موضع الشريط':'Toolbar position','إخفاء الأزرار بالضغط':'Hide controls on tap','اضغط على الصفحة لإخفاء الأدوات وإظهارها':'Tap the page to hide or show the tools','مظهر الصفحات':'Page theme','التكبير الافتراضي':'Default zoom','إبقاء الشاشة مضاءة':'Keep screen on','لا تنطفئ الشاشة أثناء القراءة':'Screen stays on while reading','الهدف اليومي':'Daily goal','دقائق القراءة في اليوم':'Minutes per day','لون التمييز':'Accent color','حذف كل الملفات من المكتبة':'Delete all files from library','اضغط مرة أخرى للتأكيد':'Tap again to confirm','الخلفية الداكنة':'Dark background','درجة الظلام':'Darkness','رمادي داكن':'Dark gray','أسود حقيقي':'True black','الحفاظ على ألوان الصور':'Keep image colors','تبقى الصور بألوانها الأصلية':'Photos stay in their original colors','تظليل النص ونسخه':'Highlight & copy text','بألوان وأشكال تختارها بنفسك':'With colors and styles you choose','تم التظليل':'Highlighted','نسخ الكل':'Copy all','لا توجد تظليلات بعد.':'No highlights yet.','حدّد أي نص واختر لونًا لتظليله.':'Select any text and pick a color to highlight it.','شكل:':'Style:','ممتلئ':'Filled','خط تحت':'Underline','خط وسط':'Strike','إطار':'Box','اللون الافتراضي':'Default color','إضافة لون':'Add color'};
+const EX={'تم':'Done','نسخ':'Copy','بحث':'Search','علامة':'Bookmark','حذف':'Delete','لون':'Color','أسفل':'Bottom','أعلى':'Top','اليمين':'Right','اليسار':'Left','أصلي':'Original','ليلي':'Dark','ورقي':'Paper','انتقال':'Go to','الفهرس':'Contents','العلامات':'Bookmarks','القراءة':'Reading','البيانات':'Data','اللغة':'Language','تكبير':'Zoom in','تصغير':'Zoom out','المكتبة':'Library','الإعدادات':'Settings','قوقل':'Google','المعجم':'Dictionary','التظليل':'Highlights','الشكل':'Style'};
 const RX=[[/متبقي نحو (.*)$/,'$1 left'],[/(^|\s)من(?=\s|$)/g,'$1of'],[/(^|\s)د(?=\s|$)/g,'$1min'],[/(^|\s)س(?=\s|$)/g,'$1h']];
 if(cfg.lang==='en'){
  const KS=Object.keys(EN).sort((a,b)=>b.length-a.length);
@@ -298,7 +316,7 @@ async function start(buf,m,fresh){
     const d=await pdfjs.getDocument({data:new Uint8Array(buf.slice(0)),isEvalSupported:false}).promise;
     base=await Promise.all(Array.from({length:d.numPages},async(_,i)=>(await d.getPage(i+1)).getViewport({scale:1})));
     doc=d;meta=m;N=d.numPages;texts=[];indexed=false;tocCache=null;zoom=cfg.zoom;hl='';
-    m.pages=N;m.last=Date.now();m.marks=m.marks||[];
+    m.pages=N;m.last=Date.now();m.marks=m.marks||[];m.hl=m.hl||[];
     if(!m.cover)m.cover=await mkCover(d);
     if(!lib.includes(m))lib.push(m);
     if(fresh){try{await tx(['meta','blob'],'readwrite',t=>{t.objectStore('meta').put(m);t.objectStore('blob').put(buf,m.id)})}catch(e){toast('تعذّر الحفظ في المكتبة')}}else saveMeta(m);
@@ -328,7 +346,7 @@ async function draw(w,g){
     await p.render({canvasContext:c.getContext('2d'),viewport:v,transform:[r,0,0,r,0,0],background:'#fff'}).promise;
     if(cfg.theme===1)await darken(c,p,v,r);
     if(g!==G)return;
-    w.appendChild(c);
+    w.appendChild(c);renderHL(w);
     const tl=document.createElement('div');tl.className='textLayer';tl.style.setProperty('--scale-factor',v.scale);w.appendChild(tl);
     pdfjs.renderTextLayer({textContentSource:await p.getTextContent(),container:tl,viewport:v}).promise.then(()=>mark(tl))}catch(e){}
 }
@@ -345,7 +363,14 @@ function upd(){
 addEventListener('scroll',()=>{if(!doc)return;cancelAnimationFrame(raf);raf=requestAnimationFrame(upd)},{passive:true});
 let rw=innerWidth;addEventListener('resize',()=>{if(doc&&innerWidth!==rw){rw=innerWidth;build(cur)}});
 const go=(i,instant)=>wraps[Math.max(0,Math.min(N-1,i))].scrollIntoView({behavior:instant?'auto':'smooth',block:'start'});
-$('#pages').addEventListener('click',()=>{if(cfg.tap&&!String(getSelection()))document.body.classList.toggle('min')});
+$('#pages').addEventListener('click',e=>{
+  if(String(getSelection()))return;
+  const w=e.target.closest('.pg');
+  if(w&&meta.hl&&meta.hl.length){const b=w.getBoundingClientRect(),x=(e.clientX-b.left)/b.width,y=(e.clientY-b.top)/b.height;
+    const h=meta.hl.find(h=>h.p===w._i&&h.r.some(q=>x>=q[0]&&x<=q[0]+q[2]&&y>=q[1]&&y<=q[1]+q[3]));
+    if(h){openHed(h);return}}
+  hed.hidden=true;
+  if(cfg.tap)document.body.classList.toggle('min')});
 $('#reveal').onclick=()=>document.body.classList.remove('min');
 const setZoom=z=>{zoom=Math.max(.75,Math.min(3,z));build(cur)};
 $('#zi').onclick=()=>setZoom(zoom+.25);$('#zo').onclick=()=>setZoom(zoom-.25);
@@ -406,6 +431,9 @@ async function setTab(t){
   }else if(t==='marks'){
     const a=[...meta.marks].sort((x,y)=>x-y);
     b.innerHTML=a.length?a.map(p=>`<div class="mk"><button class="row" data-p="${p}">صفحة ${ar(p+1)}</button><button class="del" data-d="${p}" aria-label="حذف">${ic('close')}</button></div>`).join(''):'<div class="msg">لا توجد علامات بعد.<br>اضغط أيقونة العلامة أعلى الشاشة لحفظ الصفحة.</div>';
+  }else if(t==='hl'){
+    const a=[...(meta.hl||[])].sort((x,y)=>x.p-y.p);
+    b.innerHTML=a.length?`<button class="row" id="cpall" style="color:var(--blue);font-weight:600">نسخ الكل</button>`+a.map(h=>`<div class="mk"><button class="row" data-p="${h.p}"><b>صفحة ${ar(h.p+1)}</b><span><i class="dot sm" style="--c:${h.c}"></i> ${esc(h.t.slice(0,140))}</span></button><button class="del" data-x="${h.id}" aria-label="حذف">${ic('close')}</button></div>`).join(''):'<div class="msg">لا توجد تظليلات بعد.<br>حدّد أي نص واختر لونًا لتظليله.</div>';
   }else if(t==='toc'){
     b.innerHTML='<div class="msg">جارٍ تحميل الفهرس…</div>';
     const a=await getToc();if(my!==sq)return;
@@ -424,6 +452,8 @@ async function setTab(t){
   }
 }
 $('#sbody').addEventListener('click',e=>{
+  const hx=e.target.closest('[data-x]');if(hx){rmHL(hx.dataset.x);setTab('hl');return}
+  if(e.target.id==='cpall'){copyText((meta.hl||[]).sort((x,y)=>x.p-y.p).map(h=>h.t).join('\n\n')).then(ok=>toast(ok?'تم النسخ':'تعذّر النسخ'));return}
   const d=e.target.closest('[data-d]');
   if(d){meta.marks=meta.marks.filter(p=>p!==+d.dataset.d);saveMeta(meta);upd();setTab('marks');return}
   const p=e.target.closest('[data-p]');if(p){closeSheet();const i=+p.dataset.p;go(i,true);if(hl)setTimeout(()=>{const h=wraps[i].querySelector('.hit');if(h)h.scrollIntoView({block:'center'})},600)}
@@ -460,6 +490,7 @@ function renderSettings(){
 $('#sc').innerHTML=
 grp('شريط الأدوات',`<div class="srow"><span>موضع الشريط</span>${sg('pos',[['b','أسفل'],['t','أعلى'],['r','اليمين'],['l','اليسار']])}</div>`+sw('tap','إخفاء الأزرار بالضغط','اضغط على الصفحة لإخفاء الأدوات وإظهارها'))+
 grp('القراءة',`<div class="srow"><span>مظهر الصفحات</span>${sg('theme',[[0,'أصلي'],[1,'ليلي'],[2,'ورقي']])}</div><div class="srow"><span>التكبير الافتراضي</span>${sg('zoom',[[1,'١٠٠٪'],[1.25,'١٢٥٪'],[1.5,'١٥٠٪']])}</div>`+sw('wake','إبقاء الشاشة مضاءة','لا تنطفئ الشاشة أثناء القراءة'))+
+grp('التظليل',`<div class="srow"><span>الشكل</span>${sg('hs',[['fill','ممتلئ'],['under','خط تحت'],['strike','خط وسط'],['box','إطار']])}</div><div class="srow"><span>اللون الافتراضي</span><div class="sws" style="flex-wrap:wrap;justify-content:flex-start;gap:6px;margin-top:8px">${[...PRE,...cfg.colors].map(c=>`<span class="cw"><button class="swt${cfg.hc===c?' on':''}" data-h="${c}" style="background:${c}" aria-label="لون"></button>${PRE.includes(c)?'':`<button class="rm" data-rm="${c}" aria-label="حذف">×</button>`}</span>`).join('')}<label class="swt add"><input type="color" id="cc2" value="${cfg.hc}" aria-label="إضافة لون"></label></div></div>`)+
 grp('الخلفية الداكنة',`<div class="srow"><span>درجة الظلام</span>${sg('oled',[[0,'رمادي داكن'],[1,'أسود حقيقي']])}</div>`+sw('img','الحفاظ على ألوان الصور','تبقى الصور بألوانها الأصلية'))+
 grp('اللغة',`<div class="srow">${sg('lang',[['ar','العربية'],['en','English']])}</div>`)+
 grp('الهدف اليومي',`<div class="srow"><span>دقائق القراءة في اليوم</span>${sg('goal',[[10,ar(10)],[15,ar(15)],[30,ar(30)],[60,ar(60)]])}</div>`)+
@@ -471,6 +502,8 @@ const b=e.target.closest('button');if(!b)return;const g=b.closest('.sg');
 if(g){const k=g.dataset.k;cfg[k]=typeof CFG[k]==='number'?+b.dataset.v:b.dataset.v;if(k==='lang'){applyCfg();location.reload();return}}
 else if(b.dataset.s)cfg[b.dataset.s]=!cfg[b.dataset.s];
 else if(b.dataset.c)cfg.acc=b.dataset.c;
+else if(b.dataset.h)cfg.hc=b.dataset.h;
+else if(b.dataset.rm){cfg.colors=cfg.colors.filter(c=>c!==b.dataset.rm);if(cfg.hc===b.dataset.rm)cfg.hc=PRE[0]}
 else if(b.id==='wipe'){
 if(!b.classList.contains('d')){b.classList.add('d');b.textContent='اضغط مرة أخرى للتأكيد';setTimeout(()=>{b.classList.remove('d');b.textContent='حذف كل الملفات من المكتبة'},3000);return}
 try{await tx(['meta','blob'],'readwrite',t=>{t.objectStore('meta').clear();t.objectStore('blob').clear()})}catch(_){}
@@ -479,13 +512,59 @@ else return;
 applyCfg();renderSettings();
 });
 $('#gear').onclick=()=>{renderSettings();setV('settings');scrollTo(0,0)};
+$('#sc').addEventListener('change',e=>{if(e.target.id==='cc2'){addColor(e.target.value);renderSettings()}});
 $('#sback').onclick=()=>{home();setV('home');scrollTo(0,0)};
 
 /* selection */
 const sel=$('#sel');
-document.addEventListener('selectionchange',()=>{const s=getSelection(),n=s.anchorNode;sel.hidden=!(String(s).trim()&&n&&document.body.dataset.v==='reader'&&$('#pages').contains(n.nodeType===1?n:n.parentNode))});
-$('#cp').onclick=async()=>{const s=String(getSelection());let ok=false;try{ok=document.execCommand('copy')}catch(e){}if(!ok)try{await navigator.clipboard.writeText(s);ok=true}catch(e){}toast(ok?'تم النسخ':'تعذّر النسخ');if(ok)getSelection().removeAllRanges()};
-$('#ss').onclick=()=>{const s=String(getSelection()).trim().replace(/\s+/g,' ').slice(0,60);openSheet('search');const q=$('#q');q.value=s;q.oninput()};
+const PRE=['#ffd60a','#30d158','#64d2ff','#ff375f','#ff9f0a','#bf5af2'],STL=['fill','under','strike','box'],ST={fill:'ممتلئ',under:'خط تحت',strike:'خط وسط',box:'إطار'},hed=$('#hed');
+let pend=null,pk=false,sd,eh=null;
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const addColor=c=>{if(!PRE.includes(c)&&!cfg.colors.includes(c))cfg.colors.push(c);cfg.hc=c;applyCfg()};
+async function copyText(s){try{await navigator.clipboard.writeText(s);return true}catch(e){const t=document.createElement('textarea');t.value=s;t.style.cssText='position:fixed;opacity:0';document.body.appendChild(t);t.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}t.remove();return ok}}
+function selData(){
+  const s=getSelection();if(!s.rangeCount||s.isCollapsed)return null;
+  const text=String(s).replace(/\s+/g,' ').trim();if(!text)return null;
+  const by={},seen={};
+  [...s.getRangeAt(0).getClientRects()].forEach(q=>{
+    if(q.width<2||q.height<2)return;
+    const cx=q.left+q.width/2,cy=q.top+q.height/2,w=wraps.find(w=>{const b=w.getBoundingClientRect();return cx>=b.left&&cx<=b.right&&cy>=b.top&&cy<=b.bottom});
+    if(!w)return;const b=w.getBoundingClientRect();if(q.height/b.height>.1)return;
+    const r=[(q.left-b.left)/b.width,(q.top-b.top)/b.height,q.width/b.width,q.height/b.height],k=w._i+r.map(n=>n.toFixed(3)).join();
+    if(seen[k])return;seen[k]=1;(by[w._i]=by[w._i]||[]).push(r);
+  });
+  return Object.keys(by).length?{text,by}:null;
+}
+function renderHL(w){
+  if(!w||!w.querySelector('canvas'))return;
+  let L=w.querySelector('.hl');if(!L){L=document.createElement('div');L.className='hl';w.appendChild(L)}
+  L.innerHTML=(meta.hl||[]).filter(h=>h.p===w._i).map(h=>h.r.map(q=>`<i class="h ${h.s}" style="left:${q[0]*100}%;top:${q[1]*100}%;width:${q[2]*100}%;height:${q[3]*100}%;--c:${h.c}"></i>`).join('')).join('');
+}
+function rmHL(id){const h=meta.hl.find(v=>v.id===id);if(!h)return;meta.hl=meta.hl.filter(v=>v!==h);saveMeta(meta);renderHL(wraps[h.p])}
+function showSel(){$('#cr').innerHTML=[...PRE,...cfg.colors].map(c=>`<button class="dot${c===cfg.hc?' cur':''}" data-c="${c}" style="--c:${c}" aria-label="لون"></button>`).join('')+`<label class="dot add"><input type="color" id="cc" value="${cfg.hc}" aria-label="إضافة لون"></label>`;$('#stl').textContent='شكل: '+ST[cfg.hs];sel.hidden=false}
+function applyHL(c){
+  if(!pend)return;meta.hl=meta.hl||[];
+  Object.entries(pend.by).forEach(([p,r])=>meta.hl.push({id:uid(),p:+p,r,c,s:cfg.hs,t:pend.text}));
+  cfg.hc=c;applyCfg();saveMeta(meta);Object.keys(pend.by).forEach(p=>renderHL(wraps[p]));
+  pend=null;pk=false;sel.hidden=true;getSelection().removeAllRanges();toast('تم التظليل');
+}
+function openHed(h){eh=h;hed.innerHTML=[...PRE,...cfg.colors].map(c=>`<button class="dot${c===h.c?' cur':''}" data-c="${c}" style="--c:${c}" aria-label="لون"></button>`).join('')+`<button data-a="st">${ST[h.s]}</button><button data-a="cp">نسخ</button><button data-a="rm" style="color:#ff453a">حذف</button>`;hed.hidden=false}
+hed.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!eh)return;
+  if(b.dataset.c)eh.c=b.dataset.c;
+  else if(b.dataset.a==='st')eh.s=STL[(STL.indexOf(eh.s)+1)%STL.length];
+  else if(b.dataset.a==='cp'){copyText(eh.t).then(ok=>toast(ok?'تم النسخ':'تعذّر النسخ'));hed.hidden=true;return}
+  else if(b.dataset.a==='rm'){rmHL(eh.id);hed.hidden=true;return}
+  saveMeta(meta);renderHL(wraps[eh.p]);openHed(eh)});
+sel.addEventListener('click',e=>{const d=e.target.closest('[data-c]');if(d)applyHL(d.dataset.c);if(e.target.id==='cc')pk=true});
+sel.addEventListener('change',e=>{if(e.target.id==='cc'){pk=false;addColor(e.target.value);applyHL(e.target.value)}});
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('#hed'))hed.hidden=true;if(!e.target.closest('#sel'))pk=false},true);
+document.addEventListener('selectionchange',()=>{clearTimeout(sd);sd=setTimeout(()=>{const d=document.body.dataset.v==='reader'?selData():null;if(d){pend=d;if(!pk)showSel()}else if(!pk){pend=null;sel.hidden=true}},140)});
+$('#stl').onclick=()=>{cfg.hs=STL[(STL.indexOf(cfg.hs)+1)%STL.length];applyCfg();$('#stl').textContent='شكل: '+ST[cfg.hs]};
+const link=u=>{const a=document.createElement('a');a.href=u;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()};
+$('#gg').onclick=()=>link('https://www.google.com/search?q='+encodeURIComponent((pend?pend.text:'').slice(0,200)));
+$('#dc').onclick=()=>{const t=pend?pend.text:'',w=(t.split(' ').find(x=>x.replace(/[^\p{L}]/gu,''))||t).replace(/[^\p{L}\p{M}'-]/gu,'');link(/[\u0600-\u06FF]/.test(w)?'https://www.almaany.com/ar/dict/ar-ar/'+encodeURIComponent(w)+'/':'https://www.merriam-webster.com/dictionary/'+encodeURIComponent(w.toLowerCase()))};
+$('#cp').onclick=async()=>{const ok=await copyText(String(getSelection())||(pend?pend.text:''));toast(ok?'تم النسخ':'تعذّر النسخ');if(ok){pend=null;sel.hidden=true;getSelection().removeAllRanges()}};
+
 
 /* drag & drop */
 let dc=0;
